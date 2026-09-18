@@ -26,6 +26,18 @@ function App() {
     return JSON.parse(savedInventory)
   })
 
+  const [activeSection, setActiveSection] = useState("reading")
+  const [history, setHistory] = useState(() => {
+    const savedHistory = localStorage.getItem("history")
+
+    if (savedHistory === null) {
+      return []
+    }
+
+    return JSON.parse(savedHistory)
+  })
+  const [resourcesEarned, setResourcesEarned] = useState([])
+
   useEffect(() => {
   if (!isReading) {
     return
@@ -52,6 +64,10 @@ useEffect(() => {
   localStorage.setItem("lastSessionDuration", lastSessionDuration)
 }, [lastSessionDuration])
 
+useEffect(() => {
+  localStorage.setItem("history", JSON.stringify(history))
+}, [history])
+
 
 
 function formatTime(elapsedSeconds) {
@@ -67,7 +83,16 @@ function handleSessionToggle() {
       setQi(current => current + Math.floor(elapsedSeconds / 5))
       setQiEarned(Math.floor(elapsedSeconds / 5))
       setLastSessionDuration(elapsedSeconds)
+      const session = {
+        duration: elapsedSeconds,
+        qi: Math.floor(elapsedSeconds / 5),
+        resources: resourcesEarned
+      }
+
+      setHistory([...history, session])
+      setResourcesEarned([])
       setElapsedSeconds(0)
+
   } else {
     setQiEarned(0)
   }
@@ -95,6 +120,8 @@ function handleCollectWord() {
     return 
   }
 
+  setResourcesEarned([...resourcesEarned, newResource])
+
   const existingResource = inventory.find(
     resource => resource.name === newResource
   )
@@ -121,6 +148,20 @@ function handleCollectWord() {
   
   return (
     <>
+      <nav>
+        <button onClick={() => setActiveSection("reading")}>
+          Lettura
+        </button>
+
+        <button onClick={() => setActiveSection("inventory")}>
+          Inventario
+        </button>
+
+        <button onClick={() => setActiveSection("history")}>
+          Storico
+        </button>
+      </nav>
+
       <header>
         <h1>
           READING COMPANION
@@ -135,22 +176,24 @@ function handleCollectWord() {
           <img src={zombieImg} className="base" width="170" height="179" alt="Zorak, la creatura del giocatore" />
         </div>
       </header>
-      <section id="center">
-        
-        <div>
-          <h3>Tempo di lettura</h3>
-          <p>{formatTime(elapsedSeconds)}</p>
-          <p>Ultima sessione: {formatTime(lastSessionDuration)}</p>
-        </div>
-        <div>
-          <h3>Qi</h3>
-          <p>
-            {qi}
-          </p>
-          <h3>Ultima sessione</h3>
-          <p>
-            + {qiEarned} Qi
-          </p>
+
+      {activeSection === "reading" && (
+        <section id="center">
+            
+          <div>
+            <h3>Tempo di lettura</h3>
+            <p>{formatTime(elapsedSeconds)}</p>
+            <p>Ultima sessione: {formatTime(lastSessionDuration)}</p>
+          </div>
+          <div>
+            <h3>Qi</h3>
+            <p>
+              {qi}
+            </p>
+            <h3>Ultima sessione</h3>
+            <p>
+              + {qiEarned} Qi
+            </p>
             <input 
               value={word}
               onChange={(e) => setWord(e.target.value)}
@@ -161,26 +204,45 @@ function handleCollectWord() {
               disabled={!isReading}>
                 Raccogli parola
             </button>
-           <div>
-            <h2>Inventario</h2>
-            {inventory.map(resource => (
-              <p key={resource.name}>{resource.name} x {resource.quantity}</p>
-            ))}
           </div>
+          <button
+            type="button"
+            className="start"
+            onClick={handleSessionToggle}
+          >
+            {isReading ? 'Termina Sessione' : 'Inizia Sessione'}
+          </button>
+            
+        </section>
+      )}
+      
+      {activeSection === "inventory" && (
+        <div>
+          <h2>Inventario</h2>
+          {inventory.map(resource => (
+            <p key={resource.name}>{resource.name} x {resource.quantity}</p>
+          ))}
         </div>
-        <button
-          type="button"
-          className="start"
-          onClick={handleSessionToggle}
-        >
-           {isReading ? 'Termina Sessione' : 'Inizia Sessione'}
-        </button>
-        
-      </section>
+      )}
 
-      
+      {activeSection === "history" && (
+        <div>
+        <h2>Storico</h2>
 
-      
+        {history.map((session, index) => (
+          <div key={index}>
+            <h3>Sessione {index + 1}</h3>
+            <p>Durata: {formatTime(session.duration)}</p>
+            <p>Qi: {session.qi}</p>
+            <p>Risorse:</p>
+             {session.resources.map((resource, index) => (
+                <p key={index}>{resource}</p>
+              ))}
+          </div>
+        ))}
+      </div>
+      )}
+
     </>
   )
 }
